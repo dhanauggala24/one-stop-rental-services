@@ -2,6 +2,15 @@ import { useEffect, useState } from "react";
 import API from "../api/axios";
 import Navbar from "../components/Navbar";
 
+const BACKEND_URL = "https://one-stop-rental-backend.onrender.com";
+
+const getImageUrl = (imagePath) => {
+  if (!imagePath) return "";
+  if (imagePath.startsWith("http")) return imagePath;
+  const cleanPath = imagePath.replaceAll("\\", "/").replace(/^\/+/, "");
+  return `${BACKEND_URL}/${cleanPath}`;
+};
+
 function MyItems() {
   const [items, setItems] = useState([]);
   const [selectedFiles, setSelectedFiles] = useState({});
@@ -134,10 +143,13 @@ function MyItems() {
                 <div className="card h-100 shadow">
                   {item.image && (
                     <img
-                      src={`http://127.0.0.1:8000/${item.image.replaceAll("\\", "/")}`}
+                      src={getImageUrl(item.image)}
                       className="card-img-top"
                       alt={item.title}
                       style={{ height: "220px", objectFit: "cover" }}
+                      onError={(e) => {
+                        e.currentTarget.style.display = "none";
+                      }}
                     />
                   )}
 
