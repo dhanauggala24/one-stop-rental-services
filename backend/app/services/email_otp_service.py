@@ -1,54 +1,72 @@
-import smtplib
 import random
 import os
-from email.message import EmailMessage
 from datetime import datetime, timedelta
 from dotenv import load_dotenv
+from twilio.rest import Client
 
 load_dotenv()
 
 otp_storage = {}
 
-EMAIL_ADDRESS = os.getenv("EMAIL_ADDRESS")
-EMAIL_APP_PASSWORD = os.getenv("EMAIL_APP_PASSWORD")
+TWILIO_ACCOUNT_SID = os.getenv("TWILIO_ACCOUNT_SID")
+TWILIO_AUTH_TOKEN = os.getenv("TWILIO_AUTH_TOKEN")
+TWILIO_WHATSAPP_NUMBER = os.getenv("TWILIO_WHATSAPP_NUMBER")
 
 
 def generate_otp():
     return str(random.randint(100000, 999999))
 
 
-def send_otp_email(receiver_email: str, otp: str):
-    if not EMAIL_ADDRESS or not EMAIL_APP_PASSWORD:
-        raise Exception("Email credentials not configured")
+def format_whatsapp_number(phone_number: str):
+    phone = str(phone_number).strip().replace(" ", "").replace("-", "")
 
-    msg = EmailMessage()
-    msg["Subject"] = "Password Reset OTP - One Stop Rental Services"
-    msg["From"] = EMAIL_ADDRESS
-    msg["To"] = receiver_email
+    if phone.startswith("whatsapp:"):
+        return phone
 
-    msg.set_content(f"""
-Hello,
+    if phone.startswith("+"):
+        return f"whatsapp:{phone}"
 
-Your OTP for password reset is:
+    if len(phone) == 10:
+        return f"whatsapp:+91{phone}"
 
-{otp}
+    if phone.startswith("91") and len(phone) == 12:
+        return f"whatsapp:+{phone}"
+
+    return f"whatsapp:+{phone}"
+
+
+def send_otp_whatsapp(phone_number: str, otp: str):
+    if not TWILIO_ACCOUNT_SID or not TWILIO_AUTH_TOKEN or not TWILIO_WHATSAPP_NUMBER:
+        raise Exception("Twilio credentials not configured")
+
+    from_number = TWILIO_WHATSAPP_NUMBER
+
+    if not from_number.startswith("whatsapp:"):
+        from_number = f"whatsapp:{from_number}"
+
+    to_number = format_whatsapp_number(phone_number)
+
+    message_body = f"""
+One Stop Rental Services
+
+Your password reset OTP is: {otp}
 
 This OTP is valid for 10 minutes.
-
-Regards,
-One Stop Rental Services
-""")
+"""
 
     try:
-        with smtplib.SMTP("smtp.gmail.com", 587, timeout=30) as smtp:
-            smtp.ehlo()
-            smtp.starttls()
-            smtp.ehlo()
-            smtp.login(EMAIL_ADDRESS, EMAIL_APP_PASSWORD)
-            smtp.send_message(msg)
+        client = Client(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN)
+
+        message = client.messages.create(
+            body=message_body,
+            from_=from_number,
+            to=to_number
+        )
+
+        return message.sid
 
     except Exception as e:
-        raise Exception(f"Email sending failed: {str(e)}")
+        raise Exception(f"WhatsApp OTP sending failed: {str(e)}")
 
 
 def save_otp(email: str, otp: str):

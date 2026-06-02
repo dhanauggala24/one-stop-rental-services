@@ -14,7 +14,7 @@ from app.services.hash_service import hash_password, verify_password
 from app.services.jwt_service import create_access_token
 from app.services.email_otp_service import (
     generate_otp,
-    send_otp_email,
+    send_otp_whatsapp,
     save_otp,
     verify_otp,
     is_otp_verified,
@@ -113,15 +113,19 @@ def forgot_password(
                 detail="Email not registered"
             )
 
+        if not existing_user.phone_number:
+            raise HTTPException(
+                status_code=400,
+                detail="Phone number not registered for this account"
+            )
+
         otp = generate_otp()
         save_otp(request.email, otp)
 
-        db.close()
-
-        send_otp_email(request.email, otp)
+        send_otp_whatsapp(existing_user.phone_number, otp)
 
         return {
-            "message": "OTP sent successfully to registered email"
+            "message": "OTP sent successfully to registered WhatsApp number"
         }
 
     except HTTPException:
@@ -133,6 +137,8 @@ def forgot_password(
             status_code=500,
             detail=str(e)
         )
+
+
 @router.post("/verify-otp")
 def verify_password_otp(
     request: VerifyOTPRequest
