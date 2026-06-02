@@ -1,8 +1,11 @@
 import smtplib
 import random
 import os
+from dotenv import load_dotenv
 from email.message import EmailMessage
 from datetime import datetime, timedelta
+
+load_dotenv()
 
 otp_storage = {}
 
