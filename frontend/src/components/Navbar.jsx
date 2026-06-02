@@ -1,21 +1,28 @@
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { jwtDecode } from "jwt-decode";
 
 function Navbar() {
+  const navigate = useNavigate();
+
   const token = localStorage.getItem("token");
 
   let role = "";
   let email = "";
 
-  if (token) {
-    const decoded = jwtDecode(token);
-    role = decoded.role;
-    email = decoded.email;
+  try {
+    if (token) {
+      const decoded = jwtDecode(token);
+      role = decoded.role;
+      email = decoded.email;
+    }
+  } catch (error) {
+    console.log(error);
+    localStorage.removeItem("token");
   }
 
   const logout = () => {
     localStorage.removeItem("token");
-    window.location.href = "/";
+    navigate("/");
   };
 
   return (

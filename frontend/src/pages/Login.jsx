@@ -1,9 +1,12 @@
 import { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import API from "../api/axios";
 
 function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+
+  const navigate = useNavigate();
 
   const handleLogin = async () => {
     try {
@@ -21,13 +24,13 @@ function Login() {
       alert("Login Successful");
 
       if (decoded.role === "user") {
-        window.location.href = "/user-dashboard";
+        navigate("/user-dashboard");
       } else if (decoded.role === "admin") {
-        window.location.href = "/admin-dashboard";
+        navigate("/admin-dashboard");
       } else {
         alert("Invalid role. Only user and admin are allowed.");
         localStorage.removeItem("token");
-        window.location.href = "/login";
+        navigate("/login");
       }
     } catch (error) {
       console.log(error.response?.data || error.message);
@@ -61,11 +64,12 @@ function Login() {
         </button>
 
         <p className="text-center mt-3">
-          Don&apos;t have an account? <a href="/register">Register</a>
+          Don&apos;t have an account? <Link to="/register">Register</Link>
         </p>
-        <p>
-  <a href="/forgot-password">Forgot Password?</a>
-</p>
+
+        <p className="text-center">
+          <Link to="/forgot-password">Forgot Password?</Link>
+        </p>
       </div>
     </div>
   );

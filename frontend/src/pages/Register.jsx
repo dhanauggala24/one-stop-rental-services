@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import API from "../api/axios";
 
 function Register() {
@@ -9,7 +10,14 @@ function Register() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [role, setRole] = useState("user");
 
+  const navigate = useNavigate();
+
   const handleRegister = async () => {
+    if (!name || !email || !phoneNumber || !password || !confirmPassword) {
+      alert("Please fill all fields");
+      return;
+    }
+
     if (password !== confirmPassword) {
       alert("Password and confirm password do not match");
       return;
@@ -25,10 +33,10 @@ function Register() {
       });
 
       alert(response.data.message);
-      window.location.href = "/login";
+      navigate("/login");
     } catch (error) {
       console.log(error.response?.data || error.message);
-      alert("Registration Failed");
+      alert(error.response?.data?.detail || "Registration Failed");
     }
   };
 
@@ -91,7 +99,7 @@ function Register() {
         </button>
 
         <p className="text-center mt-3">
-          Already have an account? <a href="/login">Login</a>
+          Already have an account? <Link to="/login">Login</Link>
         </p>
       </div>
     </div>

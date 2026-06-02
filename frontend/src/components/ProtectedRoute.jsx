@@ -1,26 +1,35 @@
+import { Navigate } from "react-router-dom";
 import { jwtDecode } from "jwt-decode";
 
 function ProtectedRoute({ children, allowedRoles }) {
   const token = localStorage.getItem("token");
 
   if (!token) {
-    window.location.href = "/";
-    return null;
+    return <Navigate to="/" replace />;
   }
 
-  const decoded = jwtDecode(token);
-  const role = decoded.role;
+  let role;
+
+  try {
+    const decoded = jwtDecode(token);
+    role = decoded.role;
+  } catch (error) {
+    console.log("Invalid token:", error);
+    localStorage.removeItem("token");
+    return <Navigate to="/" replace />;
+  }
 
   if (allowedRoles && !allowedRoles.includes(role)) {
     if (role === "user") {
-      window.location.href = "/user-dashboard";
-    } else if (role === "provider") {
-      window.location.href = "/provider-dashboard";
-    } else if (role === "admin") {
-      window.location.href = "/admin-dashboard";
+      return <Navigate to="/user-dashboard" replace />;
     }
 
-    return null;
+    if (role === "admin") {
+      return <Navigate to="/admin-dashboard" replace />;
+    }
+
+    localStorage.removeItem("token");
+    return <Navigate to="/" replace />;
   }
 
   return children;
