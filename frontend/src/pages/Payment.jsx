@@ -114,8 +114,12 @@ function Payment() {
   };
 
   useEffect(() => {
-    loadCart();
-  }, [loadCart]);
+  const fetchCart = async () => {
+    await loadCart();
+  };
+
+  fetchCart();
+}, [loadCart]);
 
   return (
     <div>
