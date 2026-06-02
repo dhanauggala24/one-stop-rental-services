@@ -248,6 +248,7 @@ function Payment() {
                 {qrPath && (
                   <div className="mt-4 text-center">
                     <h4>Booking QR Code</h4>
+                    <p>QR Path: {qrPath}</p>
 
                     <img
                       src={getFileUrl(qrPath)}
