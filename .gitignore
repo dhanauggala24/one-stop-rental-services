@@ -6,4 +6,4 @@ build/
 __pycache__/
 *.pyc
 qr_codes/
-uploads/
+
