@@ -1,6 +1,9 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import API from "../api/axios";
 import Navbar from "../components/Navbar";
+
+const BACKEND_URL = "https://one-stop-rental-backend.onrender.com";
 
 function Payment() {
   const [cartItems, setCartItems] = useState([]);
@@ -11,9 +14,31 @@ function Payment() {
   const [smsMessage, setSmsMessage] = useState("");
   const [smsResult, setSmsResult] = useState(null);
 
-  const loadCart = async () => {
+  const navigate = useNavigate();
+
+  const getFileUrl = (filePath) => {
+    if (!filePath) {
+      return "";
+    }
+
+    if (filePath.startsWith("http")) {
+      return filePath;
+    }
+
+    const cleanPath = filePath.replaceAll("\\", "/").replace(/^\/+/, "");
+
+    return `${BACKEND_URL}/${cleanPath}`;
+  };
+
+  const loadCart = useCallback(async () => {
     try {
       const token = localStorage.getItem("token");
+
+      if (!token) {
+        alert("Please login again");
+        navigate("/login");
+        return;
+      }
 
       const response = await API.get("/my-cart", {
         headers: {
@@ -23,21 +48,35 @@ function Payment() {
 
       setCartItems(response.data);
 
-      let total = 0;
-      response.data.forEach((item) => {
-        total += item.total_price;
-      });
+      const total = response.data.reduce(
+        (sum, item) => sum + Number(item.total_price || 0),
+        0
+      );
 
       setTotalAmount(total);
     } catch (error) {
       console.log(error.response?.data || error.message);
+
+      if (error.response?.status === 401) {
+        localStorage.removeItem("token");
+        alert("Session expired. Please login again.");
+        navigate("/login");
+        return;
+      }
+
       alert("Failed to load payment details");
     }
-  };
+  }, [navigate]);
 
   const handlePayment = async () => {
     try {
       const token = localStorage.getItem("token");
+
+      if (!token) {
+        alert("Please login again");
+        navigate("/login");
+        return;
+      }
 
       const response = await API.post(
         "/confirm-payment",
@@ -49,18 +88,23 @@ function Payment() {
         }
       );
 
-      console.log("FULL PAYMENT RESPONSE:", response.data);
-      console.log("SMS RESULT:", response.data.sms_result);
-
       setPaymentSuccess(true);
       setReceipt(response.data.receipt);
       setQrPath(response.data.qr_path);
       setSmsMessage(response.data.sms_message);
       setSmsResult(response.data.sms_result);
 
-      alert("Payment Successful! QR generated and SMS process completed.");
+      alert("Payment Successful! QR generated and message process completed.");
     } catch (error) {
       console.log(error.response?.data || error.message);
+
+      if (error.response?.status === 401) {
+        localStorage.removeItem("token");
+        alert("Session expired. Please login again.");
+        navigate("/login");
+        return;
+      }
+
       alert(
         error.response?.data?.detail ||
           JSON.stringify(error.response?.data) ||
@@ -70,12 +114,8 @@ function Payment() {
   };
 
   useEffect(() => {
-    const fetchCart = async () => {
-      await loadCart();
-    };
-
-    fetchCart();
-  }, []);
+    loadCart();
+  }, [loadCart]);
 
   return (
     <div>
@@ -179,10 +219,7 @@ function Payment() {
                 <h5 className="mt-4">Booked Items</h5>
 
                 {receipt.items.map((item) => (
-                  <div
-                    key={item.booking_id}
-                    className="border rounded p-3 mb-3"
-                  >
+                  <div key={item.booking_id} className="border rounded p-3 mb-3">
                     <p>
                       <strong>Booking ID:</strong> {item.booking_id}
                     </p>
@@ -213,10 +250,7 @@ function Payment() {
                     <h4>Booking QR Code</h4>
 
                     <img
-                      src={`http://127.0.0.1:8000/${qrPath.replace(
-                        "\\",
-                        "/"
-                      )}`}
+                      src={getFileUrl(qrPath)}
                       alt="Booking QR"
                       style={{
                         width: "250px",
@@ -228,9 +262,7 @@ function Payment() {
                 )}
 
                 {smsMessage && (
-                  <div className="alert alert-info mt-4">
-                    📩 {smsMessage}
-                  </div>
+                  <div className="alert alert-info mt-4">📩 {smsMessage}</div>
                 )}
 
                 {smsResult && (
@@ -241,16 +273,18 @@ function Payment() {
                         : "alert alert-danger mt-3"
                     }
                   >
-                    <strong>SMS API Status:</strong>{" "}
+                    <strong>Message API Status:</strong>{" "}
                     {smsResult.success ? "Sent Successfully" : "Failed"}
                     <br />
-                    <small>{JSON.stringify(smsResult.response || smsResult.message)}</small>
+                    <small>
+                      {JSON.stringify(smsResult.response || smsResult.message)}
+                    </small>
                   </div>
                 )}
 
                 <button
                   className="btn btn-primary mt-3"
-                  onClick={() => (window.location.href = "/my-bookings")}
+                  onClick={() => navigate("/my-bookings")}
                 >
                   Go To My Bookings
                 </button>
