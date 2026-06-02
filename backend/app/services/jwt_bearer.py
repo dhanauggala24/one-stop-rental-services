@@ -1,8 +1,12 @@
 from fastapi import HTTPException, Depends
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from jose import jwt, JWTError
+from dotenv import load_dotenv
+import os
 
-SECRET_KEY = "mysecretkey"
+load_dotenv()
+
+SECRET_KEY = os.getenv("SECRET_KEY")
 ALGORITHM = "HS256"
 
 bearer_scheme = HTTPBearer()
@@ -11,27 +15,24 @@ bearer_scheme = HTTPBearer()
 def verify_token(
     credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme)
 ):
+    if not SECRET_KEY:
+        raise HTTPException(
+            status_code=500,
+            detail="SECRET_KEY is not configured"
+        )
 
     token = credentials.credentials
 
-    print("TOKEN RECEIVED:", token)
-
     try:
-
         payload = jwt.decode(
             token,
             SECRET_KEY,
             algorithms=[ALGORITHM]
         )
 
-        print("PAYLOAD:", payload)
-
         return payload
 
-    except JWTError as e:
-
-        print("JWT ERROR:", str(e))
-
+    except JWTError:
         raise HTTPException(
             status_code=401,
             detail="Invalid or expired token"
