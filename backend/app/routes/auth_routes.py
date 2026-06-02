@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
-from app.database.database import SessionLocal
+from app.database.db_dependency import get_db
 from app.models.user_model import User
 from app.schemas.user_schema import (
     UserCreate,
@@ -22,14 +22,6 @@ from app.services.email_otp_service import (
 )
 
 router = APIRouter()
-
-
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
 
 
 @router.post("/register")
@@ -123,8 +115,11 @@ def forgot_password(
     otp = generate_otp()
     save_otp(request.email, otp)
 
+    db.close()
+
     try:
         send_otp_email(request.email, otp)
+
     except Exception as e:
         raise HTTPException(
             status_code=500,

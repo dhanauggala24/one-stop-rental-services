@@ -1,23 +1,13 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
-from app.database.database import SessionLocal
+from app.database.db_dependency import get_db
 from app.models.user_model import User
 from app.models.item_model import Item
 from app.models.booking_model import Booking
 from app.services.jwt_bearer import verify_token
 
 router = APIRouter()
-
-
-def get_db():
-    db = SessionLocal()
-
-    try:
-        yield db
-
-    finally:
-        db.close()
 
 
 def check_admin(user):
@@ -33,7 +23,6 @@ def admin_dashboard(
     user=Depends(verify_token),
     db: Session = Depends(get_db)
 ):
-
     check_admin(user)
 
     total_users = db.query(User).count()
@@ -64,45 +53,34 @@ def admin_dashboard(
         Item.approval_status == "rejected"
     ).count()
 
-    bookings = db.query(Booking).order_by(
+    bookings = db.query(Booking, Item, User).join(
+        Item,
+        Booking.item_id == Item.id
+    ).join(
+        User,
+        Booking.renter_id == User.id
+    ).order_by(
         Booking.id.desc()
-    ).all()
+    ).limit(100).all()
 
     booking_details = []
 
-    for booking in bookings:
-
-        item = db.query(Item).filter(
-            Item.id == booking.item_id
+    for booking, item, renter in bookings:
+        owner = db.query(User).filter(
+            User.id == item.owner_id
         ).first()
 
-        renter = db.query(User).filter(
-            User.id == booking.renter_id
-        ).first()
-
-        item_owner = None
-
-        if item:
-            item_owner = db.query(User).filter(
-                User.id == item.owner_id
-            ).first()
-
-        price_per_day = item.price_per_day if item else 0
-
-        days = (
-            (booking.end_date - booking.start_date).days + 1
-        )
-
-        total_cost = price_per_day * days
+        days = (booking.end_date - booking.start_date).days + 1
+        total_cost = item.price_per_day * days
 
         booking_details.append({
             "booking_id": booking.id,
-            "item_owner_name": item_owner.name if item_owner else "Unknown",
+            "item_owner_name": owner.name if owner else "Unknown",
             "user_name": renter.name if renter else "Unknown",
-            "item_name": item.title if item else "Unknown",
+            "item_name": item.title,
             "start_date": str(booking.start_date),
             "end_date": str(booking.end_date),
-            "price_per_day": price_per_day,
+            "price_per_day": item.price_per_day,
             "total_cost": total_cost,
             "status": booking.status
         })
@@ -126,23 +104,20 @@ def get_pending_items(
     user=Depends(verify_token),
     db: Session = Depends(get_db)
 ):
-
     check_admin(user)
 
-    items = db.query(Item).filter(
+    items = db.query(Item, User).join(
+        User,
+        Item.owner_id == User.id
+    ).filter(
         Item.approval_status == "pending"
     ).order_by(
         Item.id.desc()
-    ).all()
+    ).limit(100).all()
 
     result = []
 
-    for item in items:
-
-        owner = db.query(User).filter(
-            User.id == item.owner_id
-        ).first()
-
+    for item, owner in items:
         result.append({
             "item_id": item.id,
             "title": item.title,
@@ -165,7 +140,6 @@ def approve_item(
     user=Depends(verify_token),
     db: Session = Depends(get_db)
 ):
-
     check_admin(user)
 
     item = db.query(Item).filter(
@@ -195,7 +169,6 @@ def reject_item(
     user=Depends(verify_token),
     db: Session = Depends(get_db)
 ):
-
     check_admin(user)
 
     item = db.query(Item).filter(

@@ -1,32 +1,16 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File
 from sqlalchemy.orm import Session
+import shutil
+import os
 
-from app.database.database import SessionLocal
+from app.database.db_dependency import get_db
 from app.models.item_model import Item
 from app.models.booking_model import Booking
 from app.schemas.item_schema import ItemCreate
 from app.services.jwt_bearer import verify_token
 
-from fastapi import UploadFile, File
-import shutil
-import os
-
 router = APIRouter()
 
-
-# DATABASE CONNECTION
-
-def get_db():
-    db = SessionLocal()
-
-    try:
-        yield db
-
-    finally:
-        db.close()
-
-
-# CREATE ITEM API
 
 @router.post("/create-item")
 def create_item(
@@ -34,7 +18,6 @@ def create_item(
     user=Depends(verify_token),
     db: Session = Depends(get_db)
 ):
-
     new_item = Item(
         title=item.title,
         description=item.description,
@@ -55,51 +38,41 @@ def create_item(
     }
 
 
-# GET ALL ITEMS
-
 @router.get("/all-items")
 def get_all_items(
     db: Session = Depends(get_db)
 ):
-
     items = db.query(Item).filter(
-    Item.approval_status == "approved"
-).all()
+        Item.approval_status == "approved"
+    ).limit(100).all()
 
     return items
 
-
-# SEARCH ITEMS BY LOCATION
 
 @router.get("/search-items")
 def search_items(
     location: str = Query(...),
     db: Session = Depends(get_db)
 ):
-
     items = db.query(Item).filter(
-        Item.location.ilike(f"%{location}%")
-    ).all()
+        Item.location.ilike(f"%{location}%"),
+        Item.approval_status == "approved"
+    ).limit(100).all()
 
     return items
 
-
-# GET MY ITEMS
 
 @router.get("/my-items")
 def get_my_items(
     user=Depends(verify_token),
     db: Session = Depends(get_db)
 ):
-
     items = db.query(Item).filter(
         Item.owner_id == user["user_id"]
-    ).all()
+    ).limit(100).all()
 
     return items
 
-
-# UPDATE ITEM API
 
 @router.put("/update-item/{item_id}")
 def update_item(
@@ -108,7 +81,6 @@ def update_item(
     user=Depends(verify_token),
     db: Session = Depends(get_db)
 ):
-
     existing_item = db.query(Item).filter(
         Item.id == item_id
     ).first()
@@ -140,15 +112,12 @@ def update_item(
     }
 
 
-# DELETE ITEM API
-
 @router.delete("/delete-item/{item_id}")
 def delete_item(
     item_id: int,
     user=Depends(verify_token),
     db: Session = Depends(get_db)
 ):
-
     item = db.query(Item).filter(
         Item.id == item_id
     ).first()
@@ -165,18 +134,12 @@ def delete_item(
             detail="You can delete only your own items"
         )
 
-    # DELETE RELATED BOOKINGS FIRST
-
     bookings = db.query(Booking).filter(
         Booking.item_id == item_id
     ).all()
 
     for booking in bookings:
         db.delete(booking)
-
-    db.commit()
-
-    # DELETE ITEM
 
     db.delete(item)
     db.commit()
@@ -186,8 +149,6 @@ def delete_item(
     }
 
 
-# UPLOAD ITEM IMAGE
-
 @router.post("/upload-item-image/{item_id}")
 def upload_item_image(
     item_id: int,
@@ -195,9 +156,6 @@ def upload_item_image(
     user=Depends(verify_token),
     db: Session = Depends(get_db)
 ):
-
-    # FIND ITEM
-
     item = db.query(Item).filter(
         Item.id == item_id
     ).first()
@@ -208,33 +166,21 @@ def upload_item_image(
             detail="Item not found"
         )
 
-    # OWNER CHECK
-
     if item.owner_id != user["user_id"]:
         raise HTTPException(
             status_code=403,
             detail="You can upload image only for your own item"
         )
 
-    # CREATE UPLOADS FOLDER IF NOT EXISTS
-
     os.makedirs("uploads", exist_ok=True)
 
-    # CREATE FILE PATH
-
     filename = f"{item_id}_{file.filename}"
-
     filepath = os.path.join("uploads", filename)
-
-    # SAVE FILE
 
     with open(filepath, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
 
-    # SAVE PATH IN DATABASE
-
     item.image = filepath
-
     db.commit()
 
     return {

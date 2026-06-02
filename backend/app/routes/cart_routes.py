@@ -1,23 +1,13 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
-from app.database.database import SessionLocal
+from app.database.db_dependency import get_db
 from app.models.cart_model import Cart
 from app.models.item_model import Item
 from app.schemas.cart_schema import CartCreate
 from app.services.jwt_bearer import verify_token
 
 router = APIRouter()
-
-
-def get_db():
-    db = SessionLocal()
-
-    try:
-        yield db
-
-    finally:
-        db.close()
 
 
 @router.post("/add-to-cart")
@@ -33,13 +23,14 @@ def add_to_cart(
         )
 
     item = db.query(Item).filter(
-        Item.id == cart.item_id
+        Item.id == cart.item_id,
+        Item.approval_status == "approved"
     ).first()
 
     if not item:
         raise HTTPException(
             status_code=404,
-            detail="Item not found"
+            detail="Item not found or not approved"
         )
 
     days = (cart.end_date - cart.start_date).days + 1
@@ -76,26 +67,25 @@ def my_cart(
     user=Depends(verify_token),
     db: Session = Depends(get_db)
 ):
-    cart_items = db.query(Cart).filter(
+    cart_items = db.query(Cart, Item).join(
+        Item,
+        Cart.item_id == Item.id
+    ).filter(
         Cart.user_id == user["user_id"]
     ).all()
 
     result = []
 
-    for cart in cart_items:
-        item = db.query(Item).filter(
-            Item.id == cart.item_id
-        ).first()
-
+    for cart, item in cart_items:
         result.append({
             "cart_id": cart.id,
             "item_id": cart.item_id,
-            "title": item.title if item else "Unknown",
-            "description": item.description if item else "",
-            "location": item.location if item else "",
-            "category": item.category if item else "",
-            "price_per_day": item.price_per_day if item else 0,
-            "image": item.image if item else None,
+            "title": item.title,
+            "description": item.description,
+            "location": item.location,
+            "category": item.category,
+            "price_per_day": item.price_per_day,
+            "image": item.image,
             "start_date": str(cart.start_date),
             "end_date": str(cart.end_date),
             "total_price": cart.total_price

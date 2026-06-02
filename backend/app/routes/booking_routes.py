@@ -3,21 +3,13 @@ from sqlalchemy.orm import Session
 import qrcode
 import os
 
-from app.database.database import SessionLocal
+from app.database.db_dependency import get_db
 from app.models.booking_model import Booking
 from app.models.item_model import Item
 from app.schemas.booking_schema import BookingCreate
 from app.services.jwt_bearer import verify_token
 
 router = APIRouter()
-
-
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
 
 
 def check_booking_overlap(
@@ -47,13 +39,14 @@ def book_item(
         )
 
     item = db.query(Item).filter(
-        Item.id == booking.item_id
+        Item.id == booking.item_id,
+        Item.approval_status == "approved"
     ).first()
 
     if not item:
         raise HTTPException(
             status_code=404,
-            detail="Item not found"
+            detail="Item not found or not approved"
         )
 
     if booking.start_date > booking.end_date:
@@ -98,20 +91,18 @@ def my_bookings(
     user=Depends(verify_token),
     db: Session = Depends(get_db)
 ):
-    bookings = db.query(Booking).filter(
+    bookings = db.query(Booking, Item).join(
+        Item,
+        Booking.item_id == Item.id
+    ).filter(
         Booking.renter_id == user["user_id"]
-    ).order_by(Booking.id.desc()).all()
+    ).order_by(
+        Booking.id.desc()
+    ).limit(100).all()
 
     result = []
 
-    for booking in bookings:
-        item = db.query(Item).filter(
-            Item.id == booking.item_id
-        ).first()
-
-        if not item:
-            continue
-
+    for booking, item in bookings:
         result.append({
             "booking_id": booking.id,
             "item_id": booking.item_id,
@@ -137,20 +128,16 @@ def provider_bookings(
             detail="Only admin can access bookings"
         )
 
-    bookings = db.query(Booking).order_by(
+    bookings = db.query(Booking, Item).join(
+        Item,
+        Booking.item_id == Item.id
+    ).order_by(
         Booking.id.desc()
-    ).all()
+    ).limit(100).all()
 
     result = []
 
-    for booking in bookings:
-        item = db.query(Item).filter(
-            Item.id == booking.item_id
-        ).first()
-
-        if not item:
-            continue
-
+    for booking, item in bookings:
         result.append({
             "booking_id": booking.id,
             "item_id": booking.item_id,
@@ -274,13 +261,15 @@ def generate_booking_qr(
         Item.id == booking.item_id
     ).first()
 
+    item_title = item.title if item else str(booking.item_id)
+
     os.makedirs("qr_codes", exist_ok=True)
 
     qr_data = f"""
 ONE STOP RENTAL SERVICES BOOKING
 
 Booking ID: {booking.id}
-Item: {item.title if item else booking.item_id}
+Item: {item_title}
 Renter ID: {booking.renter_id}
 Status: {booking.status}
 Start Date: {booking.start_date}

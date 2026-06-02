@@ -1,9 +1,9 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
 from sqlalchemy.orm import Session
 import qrcode
 import os
 
-from app.database.database import SessionLocal
+from app.database.db_dependency import get_db
 from app.models.cart_model import Cart
 from app.models.booking_model import Booking
 from app.models.item_model import Item
@@ -12,14 +12,6 @@ from app.services.jwt_bearer import verify_token
 from app.services.whatsapp_service import send_whatsapp_message
 
 router = APIRouter()
-
-
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
 
 
 def check_booking_overlap(
@@ -48,6 +40,7 @@ def test_whatsapp():
 
 @router.post("/confirm-payment")
 def confirm_payment(
+    background_tasks: BackgroundTasks,
     user=Depends(verify_token),
     db: Session = Depends(get_db)
 ):
@@ -73,7 +66,10 @@ def confirm_payment(
             detail="User phone number not found"
         )
 
-    cart_items = db.query(Cart).filter(
+    cart_items = db.query(Cart, Item).join(
+        Item,
+        Cart.item_id == Item.id
+    ).filter(
         Cart.user_id == user["user_id"]
     ).all()
 
@@ -83,45 +79,30 @@ def confirm_payment(
             detail="Cart is empty"
         )
 
-    for cart in cart_items:
-        if cart.start_date > cart.end_date:
-            raise HTTPException(
-                status_code=400,
-                detail="Start date cannot be after end date"
-            )
-
-        item = db.query(Item).filter(
-            Item.id == cart.item_id
-        ).first()
-
-        if not item:
-            raise HTTPException(
-                status_code=404,
-                detail=f"Item with id {cart.item_id} not found"
-            )
-
-        existing_booking = check_booking_overlap(
-            db=db,
-            item_id=cart.item_id,
-            start_date=cart.start_date,
-            end_date=cart.end_date
-        )
-
-        if existing_booking:
-            raise HTTPException(
-                status_code=400,
-                detail=f"{item.title} is already booked for selected dates"
-            )
-
     created_bookings = []
     receipt_items = []
     total_amount = 0
 
     try:
-        for cart in cart_items:
-            item = db.query(Item).filter(
-                Item.id == cart.item_id
-            ).first()
+        for cart, item in cart_items:
+            if cart.start_date > cart.end_date:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Start date cannot be after end date"
+                )
+
+            existing_booking = check_booking_overlap(
+                db=db,
+                item_id=cart.item_id,
+                start_date=cart.start_date,
+                end_date=cart.end_date
+            )
+
+            if existing_booking:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"{item.title} is already booked for selected dates"
+                )
 
             new_booking = Booking(
                 item_id=cart.item_id,
@@ -147,12 +128,6 @@ def confirm_payment(
                 "total_price": cart.total_price
             })
 
-        if not created_bookings:
-            raise HTTPException(
-                status_code=400,
-                detail="No valid items found in cart"
-            )
-
         os.makedirs("qr_codes", exist_ok=True)
 
         qr_text = "ONE STOP RENTAL SERVICES PAYMENT RECEIPT\n"
@@ -175,14 +150,16 @@ def confirm_payment(
                 f"Total: Rs.{booked_item['total_price']}\n"
             )
 
-        qr = qrcode.make(qr_text)
-
         qr_path = f"qr_codes/payment_receipt_user_{user['user_id']}.png"
-
+        qr = qrcode.make(qr_text)
         qr.save(qr_path)
 
-        for cart in cart_items:
+        for cart, item in cart_items:
             db.delete(cart)
+
+        user_name = current_user.name
+        user_email = current_user.email
+        user_phone = current_user.phone_number
 
         db.commit()
 
@@ -210,17 +187,18 @@ def confirm_payment(
     whatsapp_message = (
         f"ONE STOP RENTAL SERVICES\n\n"
         f"Payment Successful ✅\n\n"
-        f"Name: {current_user.name}\n"
-        f"Email: {current_user.email}\n"
-        f"Phone: {current_user.phone_number}\n"
+        f"Name: {user_name}\n"
+        f"Email: {user_email}\n"
+        f"Phone: {user_phone}\n"
         f"Total Amount Paid: Rs.{total_amount}\n\n"
         f"Booked Items:\n"
         f"{booked_items_text}\n"
         f"Thank you for using One Stop Rental Services."
     )
 
-    whatsapp_result = send_whatsapp_message(
-        current_user.phone_number,
+    background_tasks.add_task(
+        send_whatsapp_message,
+        user_phone,
         whatsapp_message
     )
 
@@ -228,14 +206,13 @@ def confirm_payment(
         "message": "Payment successful",
         "booking_ids": created_bookings,
         "receipt": {
-            "user_name": current_user.name,
-            "email": current_user.email,
-            "phone_number": current_user.phone_number,
+            "user_name": user_name,
+            "email": user_email,
+            "phone_number": user_phone,
             "items": receipt_items,
             "total_amount": total_amount,
             "payment_status": "successful"
         },
         "qr_path": qr_path,
-        "whatsapp_message": whatsapp_message,
-        "whatsapp_result": whatsapp_result
+        "whatsapp_message": whatsapp_message
     }
