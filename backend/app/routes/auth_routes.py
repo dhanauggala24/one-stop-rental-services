@@ -102,35 +102,37 @@ def forgot_password(
     request: ForgotPasswordRequest,
     db: Session = Depends(get_db)
 ):
-    existing_user = db.query(User).filter(
-        User.email == request.email
-    ).first()
-
-    if not existing_user:
-        raise HTTPException(
-            status_code=404,
-            detail="Email not registered"
-        )
-
-    otp = generate_otp()
-    save_otp(request.email, otp)
-
-    db.close()
-
     try:
+        existing_user = db.query(User).filter(
+            User.email == request.email
+        ).first()
+
+        if not existing_user:
+            raise HTTPException(
+                status_code=404,
+                detail="Email not registered"
+            )
+
+        otp = generate_otp()
+        save_otp(request.email, otp)
+
+        db.close()
+
         send_otp_email(request.email, otp)
 
+        return {
+            "message": "OTP sent successfully to registered email"
+        }
+
+    except HTTPException:
+        raise
+
     except Exception as e:
+        print("FORGOT PASSWORD ERROR:", str(e))
         raise HTTPException(
             status_code=500,
-            detail=f"Failed to send OTP: {str(e)}"
+            detail=str(e)
         )
-
-    return {
-        "message": "OTP sent successfully to registered email"
-    }
-
-
 @router.post("/verify-otp")
 def verify_password_otp(
     request: VerifyOTPRequest
