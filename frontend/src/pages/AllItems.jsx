@@ -9,9 +9,11 @@ function AllItems() {
   const location = useLocation();
   const navigate = useNavigate();
 
-  const queryParams = new URLSearchParams(location.search);
-  const categoryFromUrl = queryParams.get("category") || "All";
+ const queryParams = new URLSearchParams(
+  location.search || window.location.hash.split("?")[1] || ""
+);
 
+const categoryFromUrl = queryParams.get("category") || "All";
   const [items, setItems] = useState([]);
   const [searchText, setSearchText] = useState("");
   const [dateInputs, setDateInputs] = useState({});
