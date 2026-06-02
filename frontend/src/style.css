@@ -1,0 +1,195 @@
+body {
+  margin: 0;
+  font-family: "Segoe UI", sans-serif;
+  background-color: #f5f7fa;
+}
+
+.navbar {
+  background: linear-gradient(90deg, #0f172a, #1e3a8a) !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.navbar-brand {
+  font-size: 24px;
+  font-weight: bold;
+  color: white !important;
+}
+
+.nav-link {
+  color: white !important;
+  font-weight: 500;
+}
+
+.nav-link:hover {
+  color: #fbbf24 !important;
+}
+
+.container {
+  max-width: 1200px;
+}
+
+.card {
+  border: none;
+  border-radius: 15px;
+  overflow: hidden;
+  transition: 0.3s;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+}
+
+.card:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+}
+
+.card-img-top {
+  height: 220px;
+  object-fit: cover;
+}
+
+.btn-primary {
+  background-color: #2563eb;
+  border: none;
+}
+
+.btn-primary:hover {
+  background-color: #1d4ed8;
+}
+
+.btn-success {
+  background-color: #16a34a;
+}
+
+.btn-warning {
+  color: white;
+}
+
+.btn-danger {
+  background-color: #dc2626;
+}
+
+h1 {
+  color: #1e293b;
+  font-weight: bold;
+}
+
+h2, h3, h4, h5 {
+  color: #334155;
+}
+
+.auth-bg {
+  min-height: 100vh;
+  background: linear-gradient(
+    135deg,
+    #1e3a8a,
+    #2563eb,
+    #60a5fa
+  );
+}
+
+.badge {
+  padding: 8px 12px;
+  font-size: 14px;
+}
+.navbar {
+  background: linear-gradient(90deg, #020617, #1e3a8a, #2563eb) !important;
+  min-height: 72px;
+}
+
+.navbar-brand {
+  font-size: 26px !important;
+  font-weight: 800 !important;
+  letter-spacing: 0.5px;
+}
+
+.nav-link {
+  font-size: 17px;
+  margin-left: 12px;
+}
+
+body {
+  background: linear-gradient(180deg, #eef4ff, #ffffff);
+}
+
+.card {
+  border-radius: 18px !important;
+  border: 1px solid #e5e7eb !important;
+}
+
+h1 {
+  color: #0f172a !important;
+}
+.login-selector-page {
+  min-height: 100vh;
+  background:
+    linear-gradient(rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0.55)),
+    url("https://images.unsplash.com/photo-1560518883-ce09059eeffa?auto=format&fit=crop&w=1600&q=80");
+  background-size: cover;
+  background-position: center;
+}
+
+.login-overlay {
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.login-selector-card {
+  width: 450px;
+  background: rgba(255, 255, 255, 0.95);
+  padding: 45px;
+  border-radius: 22px;
+  text-align: center;
+  box-shadow: 0 15px 40px rgba(0, 0, 0, 0.35);
+}
+
+.login-title {
+  font-weight: 800;
+  color: #1e293b;
+  margin-bottom: 15px;
+}
+
+.login-subtitle {
+  color: #64748b;
+  margin-bottom: 30px;
+}
+
+.login-option {
+  width: 100%;
+  padding: 14px;
+  margin-bottom: 15px;
+  border: none;
+  border-radius: 12px;
+  color: white;
+  font-size: 18px;
+  font-weight: 600;
+  transition: 0.3s ease;
+}
+
+.login-option:hover {
+  transform: translateY(-3px);
+  opacity: 0.95;
+}
+
+.user-login {
+  background: #2563eb;
+}
+
+.provider-login {
+  background: #16a34a;
+}
+
+.admin-login {
+  background: #111827;
+}
+
+.register-link {
+  margin-top: 20px;
+  color: #475569;
+}
+
+.register-link span {
+  color: #2563eb;
+  font-weight: 600;
+  cursor: pointer;
+}
