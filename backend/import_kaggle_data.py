@@ -4,11 +4,38 @@ from sqlalchemy.orm import Session
 
 from app.database.database import SessionLocal
 from app.models.item_model import Item
+from app.models.user_model import User
+from app.services.hash_service import hash_password
 
 
 db: Session = SessionLocal()
 
-ADMIN_OWNER_ID = 4
+
+def get_or_create_admin():
+    admin = db.query(User).filter(
+        User.email == "admin@onestoprentals.com"
+    ).first()
+
+    if admin:
+        return admin.id
+
+    admin = User(
+        name="Admin",
+        email="admin@onestoprentals.com",
+        phone_number="9999999999",
+        password=hash_password("admin123"),
+        role="admin",
+        provider_status="not_requested"
+    )
+
+    db.add(admin)
+    db.commit()
+    db.refresh(admin)
+
+    return admin.id
+
+
+ADMIN_OWNER_ID = get_or_create_admin()
 
 
 property_images = [
@@ -52,7 +79,7 @@ def import_property_rentals():
 
             try:
                 price = float(row["price"])
-            except:
+            except Exception:
                 price = 1000
 
             item = Item(
@@ -102,7 +129,7 @@ def import_pg_hostels():
 
             try:
                 price = float(row["Accommodation cost"])
-            except:
+            except Exception:
                 price = 800
 
             item = Item(
@@ -128,10 +155,16 @@ def import_pg_hostels():
     print(f"{count} PG & Hostel items imported")
 
 
-import_property_rentals()
-import_pg_hostels()
+try:
+    import_property_rentals()
+    import_pg_hostels()
 
-db.commit()
-db.close()
+    db.commit()
+    print("Dataset import completed successfully!")
 
-print("Dataset import completed successfully!")
+except Exception as e:
+    db.rollback()
+    print("Dataset import failed:", e)
+
+finally:
+    db.close()

@@ -1,7 +1,6 @@
 from sqlalchemy.orm import Session
 
 from app.database.database import SessionLocal
-from app.models.user_model import User
 from app.models.item_model import Item
 
 
@@ -11,17 +10,17 @@ db: Session = SessionLocal()
 image_map = {
     "Vehicles": [
         "uploads/vehicles/vehicle1.jpg",
-        "uploads/vehicles/vehicle2.jpg",
+        "uploads/vehicles/vehicle2.png",
         "uploads/vehicles/vehicle3.jpg",
         "uploads/vehicles/vehicle4.jpg",
         "uploads/vehicles/vehicle5.jpg",
     ],
     "Photography": [
-        "uploads/photography/camera1.jpg",
-        "uploads/photography/camera2.jpg",
-        "uploads/photography/camera3.jpg",
-        "uploads/photography/camera4.jpg",
-        "uploads/photography/camera5.jpg",
+        "uploads/photography/photo1.jpg",
+        "uploads/photography/photo2.jpg",
+        "uploads/photography/photo3.jpg",
+        "uploads/photography/photo4.jpg",
+        "uploads/photography/photo5.jpg",
     ],
     "Equipment": [
         "uploads/equipment/equipment1.jpg",
@@ -37,19 +36,40 @@ image_map = {
         "uploads/camping/camping4.jpg",
         "uploads/camping/camping5.jpg",
     ],
+    "Property Rental": [
+        "uploads/property/property1.jpg",
+        "uploads/property/property2.jpg",
+        "uploads/property/property3.jpg",
+        "uploads/property/property4.jpg",
+        "uploads/property/property5.jpg",
+    ],
+    "PG & Hostel": [
+        "uploads/pg/pg1.jpg",
+        "uploads/pg/pg2.jpg",
+        "uploads/pg/pg3.jpg",
+        "uploads/pg/pg4.jpg",
+        "uploads/pg/pg5.jpg",
+    ],
 }
 
 
-for category, images in image_map.items():
-    items = db.query(Item).filter(Item.category == category).all()
+try:
+    for category, images in image_map.items():
+        items = db.query(Item).filter(
+            Item.category == category
+        ).order_by(Item.id).all()
 
-    for index, item in enumerate(items):
-        item.image = images[index % len(images)]
+        for index, item in enumerate(items):
+            item.image = images[index % len(images)]
 
-    print(f"{len(items)} {category} images updated")
+        print(f"{len(items)} {category} images updated")
 
+    db.commit()
+    print("All category images updated successfully!")
 
-db.commit()
-db.close()
+except Exception as e:
+    db.rollback()
+    print("Image update failed:", e)
 
-print("All category images updated successfully!")
+finally:
+    db.close()
