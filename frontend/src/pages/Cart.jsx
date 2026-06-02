@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import API from "../api/axios";
 import Navbar from "../components/Navbar";
@@ -25,7 +25,7 @@ function Cart() {
     return `${BACKEND_URL}/${cleanPath}`;
   };
 
-  const loadCart = async () => {
+  const loadCart = useCallback(async () => {
     try {
       const token = localStorage.getItem("token");
 
@@ -43,11 +43,10 @@ function Cart() {
 
       setCartItems(response.data);
 
-      let total = 0;
-
-      response.data.forEach((item) => {
-        total += item.total_price;
-      });
+      const total = response.data.reduce(
+        (sum, item) => sum + Number(item.total_price || 0),
+        0
+      );
 
       setTotalAmount(total);
     } catch (error) {
@@ -62,7 +61,7 @@ function Cart() {
 
       alert("Failed to load cart");
     }
-  };
+  }, [navigate]);
 
   const removeItem = async (cartId) => {
     try {
@@ -80,7 +79,7 @@ function Cart() {
         },
       });
 
-      loadCart();
+      await loadCart();
     } catch (error) {
       console.log(error.response?.data || error.message);
 
@@ -96,9 +95,12 @@ function Cart() {
   };
 
   useEffect(() => {
-    loadCart();
-  }, []);
+  const fetchCart = async () => {
+    await loadCart();
+  };
 
+  fetchCart();
+}, [loadCart]);
   return (
     <div>
       <Navbar />
