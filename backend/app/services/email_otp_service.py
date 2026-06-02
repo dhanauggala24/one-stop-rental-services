@@ -39,9 +39,10 @@ One Stop Rental Services
 """
     )
 
-    with smtplib.SMTP_SSL("smtp.gmail.com", 465) as smtp:
-        smtp.login(EMAIL_ADDRESS, EMAIL_APP_PASSWORD)
-        smtp.send_message(msg)
+    with smtplib.SMTP("smtp.gmail.com", 587) as smtp:
+        smtp.starttls()
+    smtp.login(EMAIL_ADDRESS, EMAIL_APP_PASSWORD)
+    smtp.send_message(msg)
 
 
 def save_otp(email: str, otp: str):
