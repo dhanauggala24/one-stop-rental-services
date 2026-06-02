@@ -3,6 +3,8 @@ import { useLocation, useNavigate } from "react-router-dom";
 import API from "../api/axios";
 import Navbar from "../components/Navbar";
 
+const BACKEND_URL = "https://one-stop-rental-backend.onrender.com";
+
 function AllItems() {
   const location = useLocation();
   const navigate = useNavigate();
@@ -37,6 +39,20 @@ function AllItems() {
 
     fetchItems();
   }, []);
+
+  const getImageUrl = (imagePath) => {
+    if (!imagePath) {
+      return "";
+    }
+
+    if (imagePath.startsWith("http")) {
+      return imagePath;
+    }
+
+    const cleanPath = imagePath.replaceAll("\\", "/").replace(/^\/+/, "");
+
+    return `${BACKEND_URL}/${cleanPath}`;
+  };
 
   const currentCategory = categoryFromUrl;
 
@@ -90,6 +106,12 @@ function AllItems() {
     try {
       const token = localStorage.getItem("token");
 
+      if (!token) {
+        alert("Please login again");
+        navigate("/login");
+        return;
+      }
+
       const response = await API.post(
         "/add-to-cart",
         {
@@ -107,11 +129,23 @@ function AllItems() {
       alert(response.data.message);
     } catch (error) {
       console.log(error.response?.data || error.message);
-      alert(
+
+      const errorMessage =
         error.response?.data?.detail ||
-          JSON.stringify(error.response?.data) ||
-          "Failed to add item to cart"
-      );
+        error.response?.data?.message ||
+        "Failed to add item to cart";
+
+      if (
+        errorMessage === "Invalid or expired token" ||
+        error.response?.status === 401
+      ) {
+        localStorage.removeItem("token");
+        alert("Session expired. Please login again.");
+        navigate("/login");
+        return;
+      }
+
+      alert(errorMessage);
     }
   };
 
@@ -165,17 +199,13 @@ function AllItems() {
                 <div className="card h-100 shadow">
                   {item.image && (
                     <img
-                      src={
-                        item.image.startsWith("http")
-                          ? item.image
-                          : `http://127.0.0.1:8000/${item.image.replaceAll(
-                              "\\",
-                              "/"
-                            )}`
-                      }
+                      src={getImageUrl(item.image)}
                       className="card-img-top"
                       alt={item.title}
                       style={{ height: "220px", objectFit: "cover" }}
+                      onError={(e) => {
+                        e.currentTarget.style.display = "none";
+                      }}
                     />
                   )}
 
