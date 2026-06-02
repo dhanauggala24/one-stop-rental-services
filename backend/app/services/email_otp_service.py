@@ -40,9 +40,11 @@ One Stop Rental Services
     )
 
     with smtplib.SMTP("smtp.gmail.com", 587) as smtp:
+        smtp.ehlo()
         smtp.starttls()
-    smtp.login(EMAIL_ADDRESS, EMAIL_APP_PASSWORD)
-    smtp.send_message(msg)
+        smtp.ehlo()
+        smtp.login(EMAIL_ADDRESS, EMAIL_APP_PASSWORD)
+        smtp.send_message(msg)
 
 
 def save_otp(email: str, otp: str):
