@@ -5,6 +5,8 @@ from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
+from app.models.otp_model import OTP
+
 from app.database.database import Base, engine
 from app.models.user_model import User
 from app.models.item_model import Item
